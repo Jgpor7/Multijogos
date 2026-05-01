@@ -7,7 +7,7 @@ INCLUDES = -I./lib
 # 2. Diga ao linker para procurar a biblioteca (.a) na sua pasta
 LDFLAGS = -L./lib
 
-TARGET = Multijogos
+TARGET = multijogos
 SRCS = $(wildcard *.cpp)
 LIBS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
