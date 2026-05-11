@@ -3,10 +3,13 @@
 #include <cmath>
 #include <random>
 
-#define LARGURATELA 854
-#define ALTURATELA 480
+//#define LARGURATELA 854
+//#define ALTURATELA 480
 
-#define RAIOSPAWNZUMBI ALTURATELA/2
+#define LARGURATELA (float)GetScreenWidth()
+#define ALTURATELA (float)GetScreenHeight()
+
+#define RAIOSPAWNZUMBI ALTURATELA/3
 
 int calcularRestoPositivo(int a, int b){
     return ((a % b) + b) % b;
