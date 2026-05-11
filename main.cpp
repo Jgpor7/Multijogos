@@ -6,7 +6,7 @@
 #define LARGURATELA 854
 #define ALTURATELA 480
 
-#define RAIOSPAWNZUMBI 250
+#define RAIOSPAWNZUMBI ALTURATELA/2
 
 int calcularRestoPositivo(int a, int b){
     return ((a % b) + b) % b;
@@ -34,7 +34,7 @@ class Zumbi{
             if(sqrt(pow(posicao_x_relativa, 2) + pow(posicao_y_relativa, 2)) > RAIOSPAWNZUMBI) lugar_valido = true;
         }
 
-        retanguloZumbi = {posicao.x, posicao.y, 20, 30};
+        retanguloZumbi = {posicao.x, posicao.y, ALTURATELA/20, LARGURATELA/17};
     }
 
     void desenharZumbi(){
@@ -51,7 +51,8 @@ class Zumbi{
         vetorVisado = {(velocidade * vetorVisado.x)/moduloVetor, (velocidade * vetorVisado.y)/moduloVetor};
         posicao.x = posicao.x + vetorVisado.x;
         posicao.y = posicao.y + vetorVisado.y;
-        retanguloZumbi = {posicao.x, posicao.y, 20, 30};
+        retanguloZumbi.x = posicao.x;
+        retanguloZumbi.y = posicao.y;
     }
 
     private:
@@ -70,7 +71,7 @@ class jogador{
         vida = 5;
         balas = 20;
         posicao = {LARGURATELA/2, ALTURATELA/2};
-        retanguloJogador = {posicao.x, posicao.y, 20, 30};
+        retanguloJogador = {posicao.x, posicao.y, ALTURATELA/20, LARGURATELA/17};
     }
 
     Vector2 retornarPosicao(){
@@ -83,32 +84,19 @@ class jogador{
 
     void moverJogador(){
 
-        float velocidadeDiagonal = (velocidade * sqrt(2))/2;
+        Vector2 vetorDirecao = {0,0};
         
-        if(IsKeyDown(KEY_W)){
-            if(IsKeyDown(KEY_D)){
-                posicao.x += velocidadeDiagonal;
-                posicao.y -= velocidadeDiagonal;
-            }
-            else if(IsKeyDown(KEY_A)){
-                posicao.x -= velocidadeDiagonal;
-                posicao.y -= velocidadeDiagonal;
-            }
-            else {posicao.y -= velocidade;}
-        } 
-        if(IsKeyDown(KEY_S)){
-            if(IsKeyDown(KEY_D)){
-                posicao.x += velocidadeDiagonal;
-                posicao.y += velocidadeDiagonal;
-            }
-            else if(IsKeyDown(KEY_A)){
-                posicao.x -= velocidadeDiagonal;
-                posicao.y += velocidadeDiagonal;
-            }
-            else {posicao.y += velocidade;}
+        if(IsKeyDown(KEY_W)) vetorDirecao.y -= 1;  
+        if(IsKeyDown(KEY_S)) vetorDirecao.y += 1;
+        if(IsKeyDown(KEY_D)) vetorDirecao.x += 1;
+        if(IsKeyDown(KEY_A)) vetorDirecao.x -= 1;
+
+        if(vetorDirecao.x != 0 || vetorDirecao.y != 0){
+            float moduloVetor = sqrt(pow(vetorDirecao.x, 2) + pow(vetorDirecao.y, 2));
+            vetorDirecao = {velocidade*(vetorDirecao.x/moduloVetor), velocidade*(vetorDirecao.y/moduloVetor)};
         }
-        if(IsKeyDown(KEY_D)) posicao.x += velocidade;
-        if(IsKeyDown(KEY_A)) posicao.x -= velocidade;   
+
+        posicao = {posicao.x + vetorDirecao.x, posicao.y + vetorDirecao.y};
     }
 
     void atualizarPosicao(){
@@ -116,6 +104,31 @@ class jogador{
         posicao.y = calcularRestoPositivo((int)posicao.y, ALTURATELA);
         retanguloJogador.x = posicao.x;
         retanguloJogador.y = posicao.y;
+    }
+
+    void gerarMira(){
+
+        Texture2D textura = LoadTexture("resources/setavermelha.png");
+
+        Vector2 posicaoMouse = GetMousePosition();
+
+        float tangente = (posicaoMouse.y - posicao.y)/(posicaoMouse.x - posicaoMouse.x);
+
+
+        Vector2 centro = { (float)textura.width / 2.0f, (float)textura.height / 2.0f };
+
+            // RETÂNGULO DE ORIGEM: Pega a imagem inteira (do pixel 0,0 até a largura/altura total)
+            Rectangle sourceRec = { 0.0f, 0.0f, (float)textura.width, (float)textura.height };
+
+            // RETÂNGULO DE DESTINO: Define onde na tela e qual o tamanho final
+            // Nota: x e y aqui serão onde o CENTRO da imagem vai ficar posicionado.
+            Rectangle destRec = { posicao.x, posicao.y, (float)textura.width, (float)textura.height };
+
+            // Desenha a imagem completa rotacionando no centro
+            DrawTexturePro(textura, sourceRec, destRec, centro, 180, WHITE);
+
+        UnloadTexture(textura);
+        
     }
 
     private:
@@ -151,7 +164,7 @@ int main(){
     while (!WindowShouldClose()) {    
 
         if(calcularRestoPositivo(contadorFrames, 60*tempoNascimentoZumbi) == 0){
-            Zumbi zumbi = Zumbi(5, 20, player.retornarPosicao());
+            Zumbi zumbi = Zumbi(2, 20, player.retornarPosicao());
             listaZumbis.push_back(zumbi);
         }
         
@@ -168,6 +181,7 @@ int main(){
             DrawText(TextFormat("x: %.2f\ny: %.2f", player.retornarPosicao().x, player.retornarPosicao().y), 700, 50, 20, WHITE);
 
             player.desenharJogador();
+            player.gerarMira();
     
         EndDrawing();
 
