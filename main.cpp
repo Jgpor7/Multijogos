@@ -63,6 +63,10 @@ class Zumbi{
             return posicao;
         }
 
+        Rectangle retornarRetangulo(){
+            return retanguloZumbi;
+        }
+
         void seguirJogador(Vector2 posicaoJogador){
             Vector2 vetorVisado = {posicaoJogador.x - posicao.x, posicaoJogador.y - posicao.y};
             float moduloVetor = sqrt(pow(vetorVisado.x, 2) + pow(vetorVisado.y, 2));
@@ -78,6 +82,72 @@ class Zumbi{
         int vida;
         Rectangle retanguloZumbi;
         Vector2 posicao;
+};
+
+class Arma{
+    public:
+
+        Arma(std::string n){
+            nome = n;
+
+            if(nome == "G18"){
+                qtdMunicao = 6; dano = 1;  peso = 0.3f; frequencia = 1; velocidade = 3;
+            } else if(nome == "AK47"){
+                qtdMunicao = 24; dano = 3; peso = 2; frequencia = 0.1f; velocidade = 5;
+            }
+        }
+
+        void atirar(Vector2 posicaoJogador){ // diminui a munição e joga na lista de projeteis
+            qtdMunicao--;
+            Vector2 posicaomouse = GetMousePosition();
+            Vector2 vetordirecao = {posicaomouse.x - posicaoJogador.x, posicaomouse.y - posicaoJogador.y};
+            vetordirecao = calcularModulo(vetordirecao);
+            Projetil p = {{posicaoJogador.x, posicaoJogador.y, 20, 20}, vetordirecao, dano};
+            listaProjeteis.push_back(p);
+        }
+
+        void percorrerProjeteis(std::vector<Zumbi> listaZumbis){
+            std::vector<int> indices;
+            bool exclusao = false;
+
+            for(int i = 0; i < listaProjeteis.size(); i++){
+                Projetil projetil = listaProjeteis[i];
+                DrawRectangleRec(projetil.retangulo, BLUE);
+
+                for(int n = 0; n < listaZumbis.size(); n++){
+                    CheckCollisionRecs(projetil.retangulo, listaZumbis[n].retornarRetangulo());
+                    DrawRectangleRec(listaZumbis[n].retornarRetangulo(), GREEN);
+                    exclusao = true;
+                }
+
+                if(projetil.retangulo.x < 0 || projetil.retangulo.x > LARGURATELA || projetil.retangulo.y < 0 || projetil.retangulo.y > ALTURATELA){
+                    exclusao = true;
+                }
+
+                projetil.retangulo.x += projetil.direcao.x*velocidade;
+                projetil.retangulo.y += projetil.direcao.y*velocidade;
+                if(exclusao) indices.push_back(i);
+            }
+
+            for(int i = 0; i < indices.size(); i++) listaProjeteis.erase(listaProjeteis.begin() + indices[i]); // elimina os projeteis
+        }
+
+    private:
+        std::string nome;
+        int qtdMunicao;
+        int dano;
+        float peso;
+        float frequencia;
+        float velocidade;
+    
+        typedef struct Projetil{
+            Rectangle retangulo;
+            Vector2 direcao;
+            int danoProjetil;
+        };
+        
+        std::vector<Projetil> listaProjeteis;
+
 };
 
 class jogador{
@@ -155,72 +225,20 @@ class jogador{
         
     }
 
+    Arma retornarArma(){
+        return arma;
+    }
+
     private:
         float velocidade;
         int vida;
         int balas;
         Rectangle retanguloJogador;
         Vector2 posicao;
+        Arma arma = Arma("AK47");
         std::unordered_map<std::string, Texture2D> texturas; //  hash de texturas
 };
 
-class Arma{
-    public:
-
-        Arma(std::string n){
-            nome = n;
-
-            if(nome == "G18"){
-                qtdMunicao = 6; dano = 1;  peso = 0.3f; frequencia = 1; velocidade = 3;
-            } else if(nome == "AK47"){
-                qtdMunicao = 24; dano = 3; peso = 2; frequencia = 0.1f; velocidade = 5;
-            }
-        }
-
-        void atirar(Vector2 posicaoJogador){ // diminui a munição e joga na lista de projeteis
-            qtdMunicao--;
-            Vector2 posicaomouse = GetMousePosition();
-            Vector2 vetordirecao = {posicaomouse.x - posicaoJogador.x, posicaomouse.y - posicaoJogador.y};
-            vetordirecao = calcularModulo(vetordirecao);
-            Projetil p = {{posicaoJogador.x, posicaoJogador.y, 20, 20}, vetordirecao, dano};
-            listaProjeteis.push_back(p);
-        }
-
-        std::vector<int> percorrerProjeteis(std::vector<Zumbi> listaZumbis){
-            std::vector<int> indices;
-
-            for(int i = 0; i < listaProjeteis.size(); i++){
-                Projetil projetil = listaProjeteis[i];
-                DrawRectangleRec(projetil.retangulo, BLUE);
-
-                for(int n = 0; n < listaZumbis.size(); n++){
-                    //if()
-                }
-
-                projetil.retangulo.x += projetil.direcao.x*velocidade;
-                projetil.retangulo.y += projetil.direcao.y*velocidade;                
-            }
-
-            return indices;
-        }
-
-    private:
-        std::string nome;
-        int qtdMunicao;
-        int dano;
-        float peso;
-        float frequencia;
-        float velocidade;
-    
-        typedef struct Projetil{
-            Rectangle retangulo;
-            Vector2 direcao;
-            int danoProjetil;
-        };
-        
-        std::vector<Projetil> listaProjeteis;
-
-};
 int main(){
 
     // --- 1. Inicialização ---
@@ -264,6 +282,9 @@ int main(){
             DrawText(TextFormat("x: %.2f\ny: %.2f", player.retornarPosicao().x, player.retornarPosicao().y), 700, 50, 20, WHITE);
 
             player.desenharJogador();
+            if(IsKeyDown(KEY_SPACE)) player.retornarArma().atirar(player.retornarPosicao());
+
+            player.retornarArma().percorrerProjeteis(listaZumbis);
             
         EndDrawing();
 
