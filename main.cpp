@@ -77,6 +77,14 @@ class Zumbi{
             retanguloZumbi.y = posicao.y;
         }
 
+        void danoZumbi(int dano){
+            vida -= dano;
+        }
+
+        int retornarVida(){
+            return vida;
+        }
+
     private:
         float velocidade;
         int vida;
@@ -91,33 +99,37 @@ class Arma{
             nome = n;
 
             if(nome == "G18"){
-                qtdMunicao = 6; dano = 1;  peso = 0.3f; frequencia = 1; velocidade = 3;
+                qtdMunicao = 40; dano = 1;  peso = 0.3f; frequencia = 1; velocidade = 3;
             } else if(nome == "AK47"){
                 qtdMunicao = 24; dano = 3; peso = 2; frequencia = 0.1f; velocidade = 5;
             }
         }
 
-        void atirar(Vector2 posicaoJogador){ // diminui a munição e joga na lista de projeteis
+        void atirar(Vector2 posicaoJogador, int contador){ // diminui a munição e joga na lista de projeteis
             qtdMunicao--;
-            Vector2 posicaomouse = GetMousePosition();
-            Vector2 vetordirecao = {posicaomouse.x - posicaoJogador.x, posicaomouse.y - posicaoJogador.y};
-            vetordirecao = calcularModulo(vetordirecao);
-            Projetil p = {{posicaoJogador.x, posicaoJogador.y, 20, 20}, vetordirecao, dano};
-            listaProjeteis.push_back(p);
+            if(qtdMunicao > 0){
+                Vector2 posicaomouse = GetMousePosition();
+                Vector2 vetordirecao = {posicaomouse.x - posicaoJogador.x, posicaomouse.y - posicaoJogador.y};
+                vetordirecao = calcularModulo(vetordirecao);
+                Projetil p = {{posicaoJogador.x, posicaoJogador.y, 20, 20}, vetordirecao, dano};
+                listaProjeteis.push_back(p);
+            }
         }
 
         void percorrerProjeteis(std::vector<Zumbi> listaZumbis){
             std::vector<int> indices;
             bool exclusao = false;
 
-            for(int i = 0; i < listaProjeteis.size(); i++){
+            for(int i = 0; i < listaProjeteis.size(); i++){ // percorre cada projetil da lista
                 Projetil projetil = listaProjeteis[i];
                 DrawRectangleRec(projetil.retangulo, BLUE);
 
                 for(int n = 0; n < listaZumbis.size(); n++){
-                    CheckCollisionRecs(projetil.retangulo, listaZumbis[n].retornarRetangulo());
-                    DrawRectangleRec(listaZumbis[n].retornarRetangulo(), GREEN);
-                    exclusao = true;
+                    if(CheckCollisionRecs(projetil.retangulo, listaZumbis[n].retornarRetangulo())){
+                        DrawRectangleRec(listaZumbis[n].retornarRetangulo(), GREEN);
+                        listaZumbis[n].danoZumbi(dano);
+                        exclusao = true;
+                    }
                 }
 
                 if(projetil.retangulo.x < 0 || projetil.retangulo.x > LARGURATELA || projetil.retangulo.y < 0 || projetil.retangulo.y > ALTURATELA){
@@ -126,6 +138,7 @@ class Arma{
 
                 projetil.retangulo.x += projetil.direcao.x*velocidade;
                 projetil.retangulo.y += projetil.direcao.y*velocidade;
+                listaProjeteis[i] = projetil;
                 if(exclusao) indices.push_back(i);
             }
 
@@ -137,7 +150,7 @@ class Arma{
         int qtdMunicao;
         int dano;
         float peso;
-        float frequencia;
+        int frequencia;
         float velocidade;
     
         typedef struct Projetil{
@@ -150,9 +163,12 @@ class Arma{
 
 };
 
+// falta a exclusao da lista de texturas
 class jogador{
 
     public:
+
+    Arma arma = Arma("AK47");
 
     jogador(){
         velocidade = 5;
@@ -225,17 +241,12 @@ class jogador{
         
     }
 
-    Arma retornarArma(){
-        return arma;
-    }
-
     private:
         float velocidade;
         int vida;
         int balas;
         Rectangle retanguloJogador;
         Vector2 posicao;
-        Arma arma = Arma("AK47");
         std::unordered_map<std::string, Texture2D> texturas; //  hash de texturas
 };
 
@@ -273,18 +284,24 @@ int main(){
             ClearBackground(WHITE);
             player.gerarMira();
 
-            
+            // serios problemas de otimização aqui
+            std::vector<int> indices;
             for(int i = 0; i < listaZumbis.size(); i++) {
                 listaZumbis[i].seguirJogador(player.retornarPosicao());
                 listaZumbis[i].desenharZumbi();
+                DrawText(TextFormat("---%i----\n", listaZumbis[i].retornarVida()), 400, 500, 40, BLACK);
+                if(listaZumbis[i].retornarVida() <= 0){
+                    indices.push_back(i);
+                }
             }
+            for(int i = 0; i < indices.size(); i++) listaZumbis.erase(listaZumbis.begin() + indices[i]); // elimina os projeteis
 
             DrawText(TextFormat("x: %.2f\ny: %.2f", player.retornarPosicao().x, player.retornarPosicao().y), 700, 50, 20, WHITE);
 
             player.desenharJogador();
-            if(IsKeyDown(KEY_SPACE)) player.retornarArma().atirar(player.retornarPosicao());
+            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) player.arma.atirar(player.retornarPosicao(), contadorFrames);
 
-            player.retornarArma().percorrerProjeteis(listaZumbis);
+            player.arma.percorrerProjeteis(listaZumbis);
             
         EndDrawing();
 
